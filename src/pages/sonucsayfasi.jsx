@@ -1,18 +1,35 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { apiFetch, useAuth } from '../auth';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 function SonucSayfasi() {
     const konum = useLocation();
     const yonlendir = useNavigate();
+    const { user } = useAuth();
+    const [sonuc, setSonuc] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [hata, setHata] = useState('');
     let kayit;
-    try { kayit = JSON.parse(sessionStorage.getItem('sonuc')); } catch {}
-    const sonuc = konum.state?.sonuc || kayit;
+    try { kayit = JSON.parse(sessionStorage.getItem('sonuc:' + user.id)); } catch {}
+    const resultId = konum.state?.sonuc?.id || kayit?.id;
+    useEffect(() => {
+        let active = true;
+        setLoading(true); setSonuc(null); setHata('');
+        if (!resultId) { setLoading(false); return; }
+        apiFetch('/api/sonuclar/' + encodeURIComponent(resultId))
+            .then(async r => { if (!r.ok) throw new Error('Sonuç bulunamadı veya bu hesaba ait değil.'); return r.json(); })
+            .then(data => { if (active) setSonuc(data); })
+            .catch(e => { if (active) setHata(e.message); })
+            .finally(() => { if (active) setLoading(false); });
+        return () => { active = false; };
+    }, [resultId, user.id]);
+    if (loading) return <p className="container">Sonuç yükleniyor...</p>;
 
     if (!sonuc) {
         return (
             <div className="container exam-setup">
                 <div className="card exam-setup-card">
-                    <h2>Sonuç Yok</h2>
+                    <h2>Sonuç Yok</h2>{hata && <div role="alert" className="alert alert-danger">{hata}</div>}
                     <p>Henüz bir sınava girmediniz.</p>
                     <button className="btn btn-primary btn-lg" onClick={() => yonlendir('/sinav')}>
                         🚀 Sınava Git

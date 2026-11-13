@@ -12,6 +12,10 @@ export function createStore(file) {
     for (const key of ['sorular', 'sinavlar', 'sonuclar']) {
         if (!Array.isArray(data[key])) throw new Error('Veri dosyası geçersiz: ' + key);
     }
+    for (const key of ['users', 'sessions']) {
+        if (data[key] === undefined) data[key] = [];
+        if (!Array.isArray(data[key])) throw new Error('Veri dosyası geçersiz: ' + key);
+    }
     return {
         get data() { return data; },
         update(change) {

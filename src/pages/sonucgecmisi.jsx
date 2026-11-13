@@ -1,3 +1,4 @@
+import { apiFetch, useAuth } from '../auth';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,7 +9,7 @@ function SonucGecmisi() {
     const yonlendir = useNavigate();
 
     useEffect(() => {
-        fetch('/api/sonuclar')
+        apiFetch('/api/sonuclar')
             .then((yanit) => { if (!yanit.ok) throw new Error(); return yanit.json(); })
             .then((veri) => {
                 setSonuclar(veri);
@@ -104,7 +105,7 @@ function SonucGecmisi() {
                                         </td>
                                         <td>{s.bos_sayisi}</td><td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                                             {tarihFormatla(s.tarih)}
-                                        </td><td><button className="btn btn-outline btn-sm" onClick={() => yonlendir('/sonuc', { state: { sonuc: s } })}>İncele</button></td>
+                                        </td><td><button className="btn btn-outline btn-sm" onClick={() => yonlendir('/sonuc', { state: { sonuc: { id: s.id } } })}>İncele</button></td>
                                     </tr>
                                 );
                             })}

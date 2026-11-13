@@ -1,7 +1,9 @@
 import { createServer } from 'node:http';
-import { randomUUID, randomInt } from 'node:crypto';
+import { randomUUID, randomInt, randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
+
+import { publicUser, tokenHash, credentials, hashPassword, checkPassword, sessionToken } from './auth.js';
 
 const fields = ['soru_metni', 'secenek_a', 'secenek_b', 'secenek_c', 'secenek_d'];
 function question(body) {
@@ -25,13 +27,55 @@ async function bodyOf(req) {
         return body;
     } catch { throw Object.assign(new Error('Geçersiz JSON.'), { status: 400 }); }
 }
-export function createApp(store, { dist = resolve('dist'), now = Date.now, durationMs = 1200000 } = {}) {
+export function createApp(store, { dist = resolve('dist'), now = Date.now, durationMs = 1200000, secureCookies = process.env.NODE_ENV === 'production' } = {}) {
+    const attempts = new Map();
+    const cookie = (token, age) => 'oturum=' + token + '; HttpOnly; SameSite=Strict; Path=/; Max-Age=' + age + (secureCookies ? '; Secure' : '');
     return createServer(async (req, res) => {
         const send = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(value)); };
         try {
             const url = new URL(req.url, 'http://localhost');
             const path = url.pathname;
             if (path.startsWith('/api/')) {
+                if (!['GET', 'HEAD'].includes(req.method)) {
+                    if (!req.headers['content-type']?.startsWith('application/json')) return send(415, { hata: 'JSON isteği gerekli.' });
+                    if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) return send(403, { hata: 'İstek kaynağına izin verilmedi.' });
+                }
+                const hash = tokenHash(sessionToken(req));
+                const session = store.data.sessions.find(s => s.hash === hash && s.expires > now());
+                const user = session && store.data.users.find(u => u.id === session.user_id);
+                if (['/api/auth/kayit', '/api/auth/giris'].includes(path) && req.method === 'POST') {
+                    const ip = req.socket.remoteAddress;
+                    for (const [key, value] of attempts) if (value.until <= now()) attempts.delete(key);
+                    const limit = attempts.get(ip) || { count: 0, until: now() + 900000 };
+                    attempts.set(ip, limit);
+                    if (++limit.count > 30) return send(429, { hata: 'Çok fazla deneme. 15 dakika sonra tekrar deneyin.' });
+                    const input = credentials(await bodyOf(req));
+                    let account = store.data.users.find(u => u.email === input.email);
+                    if (path.endsWith('/kayit')) {
+                        if (account) return send(409, { hata: 'Bu e-posta ile kayıt oluşturulamadı.' });
+                        const password_hash = await hashPassword(input.password);
+                        if (store.data.users.some(u => u.email === input.email)) return send(409, { hata: 'Bu e-posta ile kayıt oluşturulamadı.' });
+                        account = { id: randomUUID(), email: input.email, role: 'user', password_hash };
+                        store.update(d => d.users.push(account));
+                    } else {
+                        const dummy = '00000000000000000000000000000000:' + '00'.repeat(64);
+                        const valid = await checkPassword(input.password, account?.password_hash || dummy);
+                        if (!account || !valid) return send(401, { hata: 'E-posta veya şifre hatalı.' });
+                    }
+                    const token = randomBytes(32).toString('hex');
+                    store.update(d => { d.sessions = d.sessions.filter(s => s.expires > now()); d.sessions.push({ hash: tokenHash(token), user_id: account.id, expires: now() + 86400000 }); });
+                    res.setHeader('Set-Cookie', cookie(token, 86400));
+                    return send(path.endsWith('/kayit') ? 201 : 200, publicUser(account));
+                }
+                if (!user) return send(401, { hata: 'Devam etmek için giriş yapın.' });
+                if (path === '/api/auth/ben' && req.method === 'GET') return send(200, publicUser(user));
+                if (path === '/api/auth/cikis' && req.method === 'POST') {
+                    store.update(d => { d.sessions = d.sessions.filter(s => s.hash !== hash); });
+                    res.setHeader('Set-Cookie', cookie('', 0));
+                    return send(200, { mesaj: 'Çıkış yapıldı.' });
+                }
+                if ((path === '/api/sorular' || path.startsWith('/api/sorular/')) && path !== '/api/sorular/kategoriler' && user.role !== 'admin') return send(403, { hata: 'Bu işlem için yönetici yetkisi gerekli.' });
+
                 if (path === '/api/sorular/kategoriler' && req.method === 'GET') return send(200, [...new Set(store.data.sorular.map(q => q.kategori))].sort());
                 if (path === '/api/sorular' && req.method === 'GET') return send(200, store.data.sorular);
                 if (path === '/api/sorular' && req.method === 'POST') {
@@ -51,13 +95,13 @@ export function createApp(store, { dist = resolve('dist'), now = Date.now, durat
                     const pool = store.data.sorular.filter(q => !kategori || q.kategori === kategori);
                     if (pool.length < 20) return send(400, { hata: `Sınav için en az 20 soru gerekli. Bu seçimde ${pool.length} soru var.` });
                     for (let i = pool.length - 1; i > 0; i--) { const j = randomInt(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-                    const exam = { id: randomUUID(), sorular: pool.slice(0, 20), bitis: now() + durationMs };
+                    const exam = { id: randomUUID(), user_id: user.id, sorular: pool.slice(0, 20), bitis: now() + durationMs };
                     store.update(d => { d.sinavlar = d.sinavlar.filter(e => e.bitis > now() - 86400000); d.sinavlar.push(exam); });
                     return send(201, { sinav_id: exam.id, bitis: exam.bitis, sorular: exam.sorular.map(({ dogru_cevap, ...q }) => q) });
                 }
                 if (path === '/api/sinav/gonder' && req.method === 'POST') {
                     const body = await bodyOf(req);
-                    const exam = store.data.sinavlar.find(e => e.id === body.sinav_id);
+                    const exam = store.data.sinavlar.find(e => e.id === body.sinav_id && e.user_id === user.id);
                     if (!exam) return send(404, { hata: 'Sınav bulunamadı veya süresi geçti.' });
                     const previous = store.data.sonuclar.find(r => r.sinav_id === exam.id);
                     if (previous) return send(200, previous);
@@ -72,19 +116,23 @@ export function createApp(store, { dist = resolve('dist'), now = Date.now, durat
                     const detaylar = exam.sorular.map(q => { const answer = accepted[q.id] || null; return { ...q, soru_id: q.id, secilen_cevap: answer, bos_mu: !answer, dogru_mu: answer === q.dogru_cevap }; });
                     const dogru = detaylar.filter(d => d.dogru_mu).length;
                     const bos = detaylar.filter(d => d.bos_mu).length;
-                    const result = { id: randomUUID(), sinav_id: exam.id, tarih: new Date(now()).toISOString(), dogru_sayisi: dogru, bos_sayisi: bos, yanlis_sayisi: 20 - dogru - bos, toplam_soru: 20, puan: dogru * 5, yuzde: dogru * 5, detaylar };
+                    const result = { id: randomUUID(), sinav_id: exam.id, user_id: user.id, tarih: new Date(now()).toISOString(), dogru_sayisi: dogru, bos_sayisi: bos, yanlis_sayisi: 20 - dogru - bos, toplam_soru: 20, puan: dogru * 5, yuzde: dogru * 5, detaylar };
                     store.update(d => d.sonuclar.unshift(result));
                     return send(200, result);
                 }
                 if (path === '/api/sinav/cevaplar' && req.method === 'PUT') {
                     const body = await bodyOf(req);
-                    const exam = store.data.sinavlar.find(e => e.id === body.sinav_id);
+                    const exam = store.data.sinavlar.find(e => e.id === body.sinav_id && e.user_id === user.id);
                     if (!exam || now() > exam.bitis || store.data.sonuclar.some(r => r.sinav_id === exam.id)) return send(409, { hata: 'Sınav artık aktif değil.' });
                     if (!body.cevaplar || typeof body.cevaplar !== 'object' || Array.isArray(body.cevaplar) || Object.entries(body.cevaplar).some(([id, a]) => !exam.sorular.some(q => q.id === id) || !['A', 'B', 'C', 'D'].includes(a))) return send(400, { hata: 'Geçersiz cevaplar.' });
                     store.update(d => { d.sinavlar.find(e => e.id === exam.id).cevaplar = body.cevaplar; });
                     return send(200, { mesaj: 'Kaydedildi.' });
                 }
-                if (path === '/api/sonuclar' && req.method === 'GET') return send(200, store.data.sonuclar);
+                if (path === '/api/sonuclar' && req.method === 'GET') return send(200, store.data.sonuclar.filter(r => r.user_id === user.id));
+                if (path.startsWith('/api/sonuclar/') && req.method === 'GET') {
+                    const result = store.data.sonuclar.find(r => r.id === path.split('/').at(-1) && r.user_id === user.id);
+                    return result ? send(200, result) : send(404, { hata: 'Sonuç bulunamadı.' });
+                }
                 return send(404, { hata: 'Adres bulunamadı.' });
             }
             if (!['GET', 'HEAD'].includes(req.method)) return send(405, { hata: 'Yöntem desteklenmiyor.' });

@@ -15,10 +15,14 @@ test('Soru yönetimi, sınav, süre ve kalıcı sonuç akışı', async t => {
     await new Promise(r => app.listen(0, '127.0.0.1', r));
     t.after(async () => { await new Promise(r => app.close(r)); rmSync(dir, { recursive: true }); });
     const base = `http://127.0.0.1:${app.address().port}`;
+    let cookie = '';
     const request = async (path, method = 'GET', body) => {
-        const response = await fetch(base + '/api' + path, { method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+        const response = await fetch(base + '/api' + path, { method, headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: body === undefined ? undefined : JSON.stringify(body) });
+        if (response.headers.get('set-cookie')) cookie = response.headers.get('set-cookie').split(';')[0];
         return { status: response.status, data: await response.json() };
     };
+    await request('/auth/kayit', 'POST', { email: 'admin@example.test', password: 'Test-password-123' });
+    store.update(d => { d.users[0].role = 'admin'; });
     assert.equal((await request('/sorular', 'POST', {})).status, 400);
     assert.equal((await request('/sinav/baslat', 'POST', {})).status, 400);
     for (let i = 0; i < 20; i++) assert.equal((await request('/sorular', 'POST', { soru_metni: `Soru ${i}`, secenek_a: '1', secenek_b: '2', secenek_c: '3', secenek_d: '4', dogru_cevap: 'A', kategori: 'Matematik' })).status, 201);

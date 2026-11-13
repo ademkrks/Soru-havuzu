@@ -91,13 +91,53 @@ yetersiz soru sayısını, kategori filtresini, cevap anahtarının gizlenmesini
 puanlamayı, tekrar gönderimi, süre sonunu, kalıcılığı ve sayfa yönlendirmesini
 kontrol eder. GitHub Actions her push ve pull request için test ve derleme yapar.
 
-## Kullanım kapsamı
+## Kullanıcılar ve yetkiler
 
-Bu sürüm yerel veya güvenilir ortamda ortak soru havuzu kullanımı içindir.
-Kullanıcı hesabı ve rol denetimi bulunmaz; yönetim ve sonuçlar ortak erişimdedir.
-Sunucu varsayılan olarak yalnız kendi bilgisayarından erişim kabul eder.
-Herkese açık veya resmi sınav hizmeti için kimlik doğrulama, yönetici yetkisi,
-kişiye özel sonuçlar ve uygun bir veritabanı gerekir.
+İlk açılışta giriş ekranı gösterilir. Hesap Oluştur ile kayıt olan herkes normal
+kullanıcıdır. E-posta ve 10–128 karakterlik şifreyle giriş yapılır.
+Normal kullanıcı sınava girer ve yalnız kendi sonuçlarını/detaylarını görür.
+Soru listesi, cevap anahtarı ve soru ekleme/düzenleme/silme yalnız yöneticiye açıktır.
+Yönetici de sonuç geçmişinde yalnız kendi sonuçlarını görür.
+
+### Yönetici oluşturma
+
+Sunucuyu durdurun. PowerShell'de yönetici e-postasını ve şifresini ortam değişkeni
+olarak belirleyip kurulum komutunu çalıştırın. Şifreyi kaynak koduna yazmayın.
+
+```powershell
+$env:ADMIN_EMAIL = Read-Host 'Yönetici e-postası'
+$adminSecret = Read-Host 'Yönetici şifresi (en az 10 karakter)' -AsSecureString
+$env:ADMIN_PASSWORD = [System.Net.NetworkCredential]::new('', $adminSecret).Password
+npm run admin
+Remove-Item Env:ADMIN_PASSWORD
+Remove-Item Env:ADMIN_EMAIL
+Remove-Variable adminSecret
+npm start
+```
+
+Komut e-posta mevcutsa o hesabı yöneticiye yükseltir ve şifresini yeniler;
+o hesabın açık oturumlarını kapatır. Yeni e-postada yönetici hesabı oluşturur.
+Varsayılan yönetici veya sabit şifre bulunmaz. DATA_FILE kullanıyorsanız kurulum
+komutunda ve sunucuda aynı dosyayı seçin. JSON kaydına aynı anda iki süreç yazmayın.
+
+### Oturum ve veri ayrımı
+
+Şifreler rastgele tuzla scrypt kullanılarak özetlenir. Oturumlar 24 saat sürer;
+çerez HttpOnly ve SameSite=Strict kullanır. Çıkış sunucudaki oturumu iptal eder.
+Kayıt/giriş için IP başına 15 dakikada 30 deneme sınırı vardır (tek sunucu süreci).
+Yazma isteklerinde JSON içerik türü ve varsa Origin denetlenir.
+Üretimde HTTPS kullanın ve NODE_ENV=production ayarlayın; çerez Secure olur.
+HTTPS ters vekili isteğin Host bilgisini dışarıdaki adresle tutarlı iletmelidir.
+
+Mevcut soru havuzu korunur. Önceki sürümden kalan sahipsiz sınav ve sonuçlar
+silinmez, hiçbir yeni hesaba otomatik atanmaz ve sonuç API'sinde görünmez.
+Yeni sınavlar oturumdaki kullanıcıya bağlanır; istemciden gelen kullanıcı/rol
+bilgileri yetki belirlemek için kullanılmaz. Sonuç detayı da sunucudan sahiplik
+kontrolüyle alınır. Tarayıcı geçmişine sonuç içeriği yerine yalnız sonuç kimliği yazılır.
+
+Kimlik uçları: POST /api/auth/kayit, POST /api/auth/giris,
+GET /api/auth/ben, POST /api/auth/cikis. Sonuç detayı: GET /api/sonuclar/:id.
+Diğer bütün API uçları giriş ister. Kategori listesi giriş yapan herkese açıktır.
 
 ## Dosyalar
 

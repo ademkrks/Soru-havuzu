@@ -1,17 +1,20 @@
+import { apiFetch, useAuth } from '../auth';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function kayitliSinav() {
+function kayitliSinav(key) {
     try {
-        const value = JSON.parse(sessionStorage.getItem('aktif-sinav'));
+        const value = JSON.parse(sessionStorage.getItem(key));
         if (value?.sinav?.id && Number.isFinite(value.sinav.bitis) && Array.isArray(value.sorular) && value.sorular.length === 20) return value;
     } catch {}
     return null;
 }
 
 function SinavSayfasi() {
+    const { user } = useAuth();
+    const sessionKey = 'aktif-sinav:' + user.id;
     const yonlendir = useNavigate();
-    const [kayit] = useState(kayitliSinav);
+    const [kayit] = useState(() => kayitliSinav(sessionKey));
 
     // Sınav aşamaları: 'hazirlik' | 'aktif' | 'gonderiliyor'
     const [asama, setAsama] = useState(kayit ? 'aktif' : 'hazirlik');
@@ -51,7 +54,7 @@ function SinavSayfasi() {
 
     useEffect(() => {
         if (asama === 'hazirlik' || tamamlandiRef.current) return;
-        try { sessionStorage.setItem('aktif-sinav', JSON.stringify({ sinav: sinavRef.current, sorular, cevaplar })); } catch {}
+        try { sessionStorage.setItem(sessionKey, JSON.stringify({ sinav: sinavRef.current, sorular, cevaplar })); } catch {}
     }, [asama, sorular, cevaplar]);
 
     useEffect(() => {
@@ -63,7 +66,7 @@ function SinavSayfasi() {
 
     // Sayfa yüklendiğinde kategorileri getir
     useEffect(() => {
-        fetch('/api/sorular/kategoriler')
+        apiFetch('/api/sorular/kategoriler')
             .then((yanit) => { if (!yanit.ok) throw new Error(); return yanit.json(); })
             .then((veri) => setKategoriler(veri))
             .catch(() => setHata('Kategoriler yüklenemedi. Bağlantınızı kontrol edin.'));
@@ -101,7 +104,7 @@ function SinavSayfasi() {
         setYukleniyor(true);
         setHata('');
         try {
-            const yanit = await fetch('/api/sinav/baslat', {
+            const yanit = await apiFetch('/api/sinav/baslat', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ kategori: seciliKategori }),
             });
@@ -126,7 +129,7 @@ function SinavSayfasi() {
     const cevapSec = (soruId, cevap) => {
         const next = { ...cevaplar, [soruId]: cevap };
         setCevaplar(next);
-        kayitKuyruguRef.current = kayitKuyruguRef.current.then(() => fetch('/api/sinav/cevaplar', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sinav_id: sinavRef.current.id, cevaplar: next }) }))
+        kayitKuyruguRef.current = kayitKuyruguRef.current.then(() => apiFetch('/api/sinav/cevaplar', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sinav_id: sinavRef.current.id, cevaplar: next }) }))
             .then(r => { if (!r.ok) throw new Error(); })
             .catch(() => setHata('Cevaplar sunucuya kaydedilemedi. Bağlantınızı kontrol edip sınavı gönderin.'));
     };
@@ -151,7 +154,7 @@ function SinavSayfasi() {
 
         try {
             await kayitKuyruguRef.current;
-            const yanit = await fetch('/api/sinav/gonder', {
+            const yanit = await apiFetch('/api/sinav/gonder', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sinav_id: sinavRef.current.id, cevaplar: cevapVerisi }),
@@ -160,9 +163,9 @@ function SinavSayfasi() {
 
             if (yanit.ok) {
                 tamamlandiRef.current = true;
-                try { sessionStorage.removeItem('aktif-sinav'); } catch {}
-                try { sessionStorage.setItem('sonuc', JSON.stringify(veri)); } catch {}
-                yonlendir('/sonuc', { state: { sonuc: veri } });
+                try { sessionStorage.removeItem(sessionKey); } catch {}
+                try { sessionStorage.setItem('sonuc:' + user.id, JSON.stringify({ id: veri.id })); } catch {}
+                yonlendir('/sonuc', { state: { sonuc: { id: veri.id } } });
             } else {
                 setHata(veri.hata || 'Gönderim başarısız');
                 setAsama('aktif');

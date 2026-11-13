@@ -1,3 +1,4 @@
+import { apiFetch, useAuth } from '../auth';
 import React, { useState, useEffect } from 'react';
 
 const BOS_FORM = {
@@ -24,7 +25,7 @@ function YonetimPaneli() {
 
     const sorulariGetir = async () => {
         try {
-            const yanit = await fetch('/api/sorular');
+            const yanit = await apiFetch('/api/sorular');
             if (!yanit.ok) throw new Error();
             const veri = await yanit.json();
             setSorular(veri);
@@ -43,7 +44,7 @@ function YonetimPaneli() {
         setYukleniyor(true);
 
         try {
-            const yanit = await fetch(duzenlenen ? `/api/sorular/${duzenlenen}` : '/api/sorular', {
+            const yanit = await apiFetch(duzenlenen ? `/api/sorular/${duzenlenen}` : '/api/sorular', {
                 method: duzenlenen ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form),
@@ -69,7 +70,7 @@ function YonetimPaneli() {
     const soruSil = async (id) => {
         if (!confirm('Bu soruyu silmek istediğinize emin misiniz?')) return;
         try {
-            const yanit = await fetch(`/api/sorular/${id}`, { method: 'DELETE' });
+            const yanit = await apiFetch(`/api/sorular/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' } });
             if (yanit.ok) {
                 setMesaj({ tip: 'success', metin: '✓ Soru silindi' });
                 if (duzenlenen === id) { setDuzenlenen(null); setForm(BOS_FORM); }
