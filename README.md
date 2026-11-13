@@ -17,6 +17,43 @@ Kullanıcı girişi, yönetici yetkilendirmesi ve kişisel sonuç takibi sunan s
 - Sorular değişse veya silinse bile önceki sınav içeriğinin korunması
 - Koyu Gece teması, klavye odağı ve azaltılmış hareket desteği
 
+## Ekran görüntüleri
+
+Gece tasarımının gerçek uygulama ekranları. Görüntüler örnek hesap ve sorularla alınmıştır; gerçek kullanıcı verisi içermez.
+
+### Giriş
+
+![Gece temalı giriş ekranı: tanıtım alanı ve e-posta/şifre formu](docs/screenshots/giris.jpg)
+
+### Sınav
+
+![Aktif sınav: süre, tek soru görünümü ve cevap durumlarını gösteren soru haritası](docs/screenshots/sinav.jpg)
+
+### Sonuç
+
+![Kişisel sınav sonucu: 80 puan, doğru/yanlış/boş dağılımı ve cevap inceleme](docs/screenshots/sonuc.jpg)
+
+### Yönetim
+
+![Yöneticiye özel soru havuzu: soru ekleme formu, arama ve soru listesi](docs/screenshots/yonetim.jpg)
+
+<details>
+<summary>Sınava hazırlık, sonuç geçmişi ve mobil görünüm</summary>
+
+### Sınava hazırlık
+
+![Kategori seçimi ve 20 soru / 20 dakika bilgilerini gösteren hazırlık ekranı](docs/screenshots/sinav-hazirlik.jpg)
+
+### Sonuç geçmişi
+
+![Yalnız giriş yapan kullanıcıya ait sınav sonuçlarının listesi](docs/screenshots/gecmis.jpg)
+
+### Mobil sınav
+
+<img src="docs/screenshots/mobil-sinav.jpg" alt="Dar ekranda sınav sorusu, seçenekler ve soru haritası" width="382" />
+
+</details>
+
 ## Teknolojiler
 
 React 18 · React Router 7 · Vite 8 · Node.js 22.12+ · Node.js test runner
