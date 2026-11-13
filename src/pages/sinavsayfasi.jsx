@@ -1,27 +1,52 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+function kayitliSinav() {
+    try {
+        const value = JSON.parse(sessionStorage.getItem('aktif-sinav'));
+        if (value?.sinav?.id && Number.isFinite(value.sinav.bitis) && Array.isArray(value.sorular) && value.sorular.length === 20) return value;
+    } catch {}
+    return null;
+}
+
 function SinavSayfasi() {
     const yonlendir = useNavigate();
+    const [kayit] = useState(kayitliSinav);
 
     // Sınav aşamaları: 'hazirlik' | 'aktif' | 'gonderiliyor'
-    const [asama, setAsama] = useState('hazirlik');
+    const [asama, setAsama] = useState(kayit ? 'aktif' : 'hazirlik');
     const [kategoriler, setKategoriler] = useState([]);
     const [seciliKategori, setSeciliKategori] = useState('');
-    const [sorular, setSorular] = useState([]);
-    const [cevaplar, setCevaplar] = useState({});
-    const [kalanSure, setKalanSure] = useState(20 * 60);
+    const [sorular, setSorular] = useState(kayit?.sorular || []);
+    const [cevaplar, setCevaplar] = useState(kayit?.cevaplar || {});
+    const [kalanSure, setKalanSure] = useState(kayit ? Math.max(0, Math.ceil((kayit.sinav.bitis - Date.now()) / 1000)) : 20 * 60);
     const [hata, setHata] = useState('');
     const [yukleniyor, setYukleniyor] = useState(false);
     const [onayModalGoster, setOnayModalGoster] = useState(false);
     const zamanlayiciRef = useRef(null);
+    const sinavRef = useRef(kayit?.sinav || null);
+    const gonderiliyorRef = useRef(false);
+    const otomatikDenendiRef = useRef(false);
+    const kayitKuyruguRef = useRef(Promise.resolve());
+
+    useEffect(() => {
+        if (asama === 'hazirlik') return;
+        try { sessionStorage.setItem('aktif-sinav', JSON.stringify({ sinav: sinavRef.current, sorular, cevaplar })); } catch {}
+    }, [asama, sorular, cevaplar]);
+
+    useEffect(() => {
+        if (asama !== 'aktif') return;
+        const uyar = e => { e.preventDefault(); e.returnValue = ''; };
+        window.addEventListener('beforeunload', uyar);
+        return () => window.removeEventListener('beforeunload', uyar);
+    }, [asama]);
 
     // Sayfa yüklendiğinde kategorileri getir
     useEffect(() => {
-        fetch('/sorular/kategoriler')
-            .then((yanit) => yanit.json())
+        fetch('/api/sorular/kategoriler')
+            .then((yanit) => { if (!yanit.ok) throw new Error(); return yanit.json(); })
             .then((veri) => setKategoriler(veri))
-            .catch(() => { });
+            .catch(() => setHata('Kategoriler yüklenemedi. Bağlantınızı kontrol edin.'));
     }, []);
 
     // Zamanlayıcı
@@ -29,14 +54,12 @@ function SinavSayfasi() {
         if (asama !== 'aktif') return;
 
         zamanlayiciRef.current = setInterval(() => {
-            setKalanSure((onceki) => {
-                if (onceki <= 1) {
-                    clearInterval(zamanlayiciRef.current);
-                    sinaviGonder(true);
-                    return 0;
-                }
-                return onceki - 1;
-            });
+            const kalan = Math.max(0, Math.ceil((sinavRef.current.bitis - Date.now()) / 1000));
+            setKalanSure(kalan);
+            if (kalan === 0) {
+                clearInterval(zamanlayiciRef.current);
+                if (!otomatikDenendiRef.current) { otomatikDenendiRef.current = true; sinaviGonderRef.current(true); }
+            }
         }, 1000);
 
         return () => clearInterval(zamanlayiciRef.current);
@@ -58,15 +81,16 @@ function SinavSayfasi() {
         setYukleniyor(true);
         setHata('');
         try {
-            const url = seciliKategori
-                ? `/sinav/baslat?kategori=${encodeURIComponent(seciliKategori)}`
-                : '/sinav/baslat';
-            const yanit = await fetch(url);
+            const yanit = await fetch('/api/sinav/baslat', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ kategori: seciliKategori }),
+            });
             const veri = await yanit.json();
 
             if (!yanit.ok) {
                 setHata(veri.hata || 'Sınav başlatılamadı');
             } else {
+                sinavRef.current = { id: veri.sinav_id, bitis: veri.bitis };
                 setSorular(veri.sorular);
                 setCevaplar({});
                 setKalanSure(20 * 60);
@@ -80,7 +104,11 @@ function SinavSayfasi() {
     };
 
     const cevapSec = (soruId, cevap) => {
-        setCevaplar((onceki) => ({ ...onceki, [soruId]: cevap }));
+        const next = { ...cevaplar, [soruId]: cevap };
+        setCevaplar(next);
+        kayitKuyruguRef.current = kayitKuyruguRef.current.then(() => fetch('/api/sinav/cevaplar', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sinav_id: sinavRef.current.id, cevaplar: next }) }))
+            .then(r => { if (!r.ok) throw new Error(); })
+            .catch(() => setHata('Cevaplar sunucuya kaydedilemedi. Bağlantınızı kontrol edip sınavı gönderin.'));
     };
 
     // Gönder butonuna basıldığında onay modalı göster
@@ -89,7 +117,8 @@ function SinavSayfasi() {
     };
 
     const sinaviGonder = useCallback(async (otomatik = false) => {
-        if (asama === 'gonderiliyor') return;
+        if (gonderiliyorRef.current) return;
+        gonderiliyorRef.current = true;
 
         setOnayModalGoster(false);
         setAsama('gonderiliyor');
@@ -101,14 +130,17 @@ function SinavSayfasi() {
         }));
 
         try {
-            const yanit = await fetch('/sinav/gonder', {
+            await kayitKuyruguRef.current;
+            const yanit = await fetch('/api/sinav/gonder', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cevaplar: cevapVerisi }),
+                body: JSON.stringify({ sinav_id: sinavRef.current.id, cevaplar: cevapVerisi }),
             });
             const veri = await yanit.json();
 
             if (yanit.ok) {
+                try { sessionStorage.removeItem('aktif-sinav'); } catch {}
+                try { sessionStorage.setItem('sonuc', JSON.stringify(veri)); } catch {}
                 yonlendir('/sonuc', { state: { sonuc: veri } });
             } else {
                 setHata(veri.hata || 'Gönderim başarısız');
@@ -117,7 +149,7 @@ function SinavSayfasi() {
         } catch {
             setHata('Ağ hatası');
             setAsama('aktif');
-        }
+        } finally { gonderiliyorRef.current = false; }
     }, [asama, sorular, cevaplar, yonlendir]);
 
     const sinaviGonderRef = useRef(sinaviGonder);
@@ -237,6 +269,7 @@ function SinavSayfasi() {
             </div>
 
             <div className="container">
+                {hata && <div role="alert" className="alert alert-danger">{hata}</div>}
                 <div className="exam-questions">
                     {sorular.map((s, idx) => (
                         <div
@@ -260,6 +293,7 @@ function SinavSayfasi() {
                                             type="radio"
                                             name={`s_${s.id}`}
                                             checked={cevaplar[s.id] === sec.anahtar}
+                                            disabled={asama !== 'aktif' || kalanSure === 0}
                                             onChange={() => cevapSec(s.id, sec.anahtar)}
                                         />
                                         <span className="option-letter">{sec.anahtar}.</span>

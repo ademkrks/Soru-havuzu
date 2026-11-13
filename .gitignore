@@ -10,3 +10,6 @@ dist/
 
 # Logs
 npm-debug.log*
+# Yerel veriler
+data/
+coverage/

@@ -13,6 +13,8 @@ const BOS_FORM = {
 function YonetimPaneli() {
     const [sorular, setSorular] = useState([]);
     const [form, setForm] = useState(BOS_FORM);
+    const [duzenlenen, setDuzenlenen] = useState(null);
+    const [arama, setArama] = useState('');
     const [mesaj, setMesaj] = useState(null);
     const [yukleniyor, setYukleniyor] = useState(false);
 
@@ -22,7 +24,8 @@ function YonetimPaneli() {
 
     const sorulariGetir = async () => {
         try {
-            const yanit = await fetch('/sorular');
+            const yanit = await fetch('/api/sorular');
+            if (!yanit.ok) throw new Error();
             const veri = await yanit.json();
             setSorular(veri);
         } catch {
@@ -40,8 +43,8 @@ function YonetimPaneli() {
         setYukleniyor(true);
 
         try {
-            const yanit = await fetch('/sorular', {
-                method: 'POST',
+            const yanit = await fetch(duzenlenen ? `/api/sorular/${duzenlenen}` : '/api/sorular', {
+                method: duzenlenen ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form),
             });
@@ -51,8 +54,9 @@ function YonetimPaneli() {
                 const hataMesaji = veri.hatalar ? veri.hatalar.join(', ') : veri.hata || 'Soru eklenemedi';
                 setMesaj({ tip: 'danger', metin: hataMesaji });
             } else {
-                setMesaj({ tip: 'success', metin: '✓ Soru başarıyla eklendi' });
+                setMesaj({ tip: 'success', metin: '✓ Soru kaydedildi' });
                 setForm(BOS_FORM);
+                setDuzenlenen(null);
                 sorulariGetir();
             }
         } catch {
@@ -65,7 +69,7 @@ function YonetimPaneli() {
     const soruSil = async (id) => {
         if (!confirm('Bu soruyu silmek istediğinize emin misiniz?')) return;
         try {
-            const yanit = await fetch(`/sorular/${id}`, { method: 'DELETE' });
+            const yanit = await fetch(`/api/sorular/${id}`, { method: 'DELETE' });
             if (yanit.ok) {
                 setMesaj({ tip: 'success', metin: '✓ Soru silindi' });
                 sorulariGetir();
@@ -93,11 +97,13 @@ function YonetimPaneli() {
             <div className="admin-layout">
                 {/* Soru Ekleme Formu */}
                 <div className="card">
-                    <div className="card-title">➕ Yeni Soru Ekle</div>
+                    <div className="card-title">{duzenlenen ? 'Soruyu Düzenle' : '➕ Yeni Soru Ekle'}</div>
                     <form onSubmit={formuGonder}>
+                        {duzenlenen && <button type="button" className="btn btn-outline" onClick={() => { setDuzenlenen(null); setForm(BOS_FORM); }}>Düzenlemeyi İptal Et</button>}
                         <div className="form-group">
                             <label>Soru Metni</label>
                             <textarea
+                                required
                                 className="form-control"
                                 name="soru_metni"
                                 value={form.soru_metni}
@@ -182,7 +188,7 @@ function YonetimPaneli() {
                         </div>
 
                         <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={yukleniyor}>
-                            {yukleniyor ? <><span className="spinner"></span> Ekleniyor...</> : '➕ Soru Ekle'}
+                            {yukleniyor ? <><span className="spinner"></span> Ekleniyor...</> : 'Soruyu Kaydet'}
                         </button>
                     </form>
                 </div>
@@ -192,6 +198,7 @@ function YonetimPaneli() {
                     <div className="card-title" style={{ marginBottom: '1rem' }}>
                         📋 Sorular ({sorular.length})
                     </div>
+                    <input aria-label="Soru ara" className="form-control" placeholder="Soru veya kategori ara..." value={arama} onChange={e => setArama(e.target.value)} />
                     <div className="question-list">
                         {sorular.length === 0 ? (
                             <div className="empty-state">
@@ -200,7 +207,7 @@ function YonetimPaneli() {
                                 <p>Formu kullanarak ilk sorunuzu ekleyin</p>
                             </div>
                         ) : (
-                            sorular.map((s) => (
+                            sorular.filter(s => (s.soru_metni + ' ' + s.kategori).toLocaleLowerCase('tr').includes(arama.toLocaleLowerCase('tr'))).map((s) => (
                                 <div key={s.id} className="question-item">
                                     <div className="question-item-content">
                                         <div className="question-item-text">{s.soru_metni}</div>
@@ -215,7 +222,8 @@ function YonetimPaneli() {
                                             <span className={s.dogru_cevap === 'D' ? 'correct' : ''}>D: {s.secenek_d}</span>
                                         </div>
                                     </div>
-                                    <button className="btn btn-danger btn-sm" onClick={() => soruSil(s.id)}>
+                                    <button className="btn btn-outline btn-sm" onClick={() => { setDuzenlenen(s.id); setForm(s); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Düzenle</button>
+                                    <button aria-label="Soruyu sil" className="btn btn-danger btn-sm" onClick={() => soruSil(s.id)}>
                                         🗑️
                                     </button>
                                 </div>

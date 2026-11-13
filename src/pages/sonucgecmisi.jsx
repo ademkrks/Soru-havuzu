@@ -3,17 +3,18 @@ import { useNavigate } from 'react-router-dom';
 
 function SonucGecmisi() {
     const [sonuclar, setSonuclar] = useState([]);
+    const [hata, setHata] = useState('');
     const [yukleniyor, setYukleniyor] = useState(true);
     const yonlendir = useNavigate();
 
     useEffect(() => {
-        fetch('/sonuclar')
-            .then((yanit) => yanit.json())
+        fetch('/api/sonuclar')
+            .then((yanit) => { if (!yanit.ok) throw new Error(); return yanit.json(); })
             .then((veri) => {
                 setSonuclar(veri);
                 setYukleniyor(false);
             })
-            .catch(() => setYukleniyor(false));
+            .catch(() => { setHata('Sonuçlar yüklenemedi. Sayfayı yenileyerek tekrar deneyin.'); setYukleniyor(false); });
     }, []);
 
     const tarihFormatla = (tarihStr) => {
@@ -51,7 +52,7 @@ function SonucGecmisi() {
                 <p>Geçmiş sınav sonuçlarınızı görüntüleyin</p>
             </div>
 
-            {sonuclar.length === 0 ? (
+            {hata ? <div role="alert" className="alert alert-danger">{hata}</div> : sonuclar.length === 0 ? (
                 <div className="empty-state">
                     <div className="empty-state-icon">📊</div>
                     <h3>Henüz sınav yapılmadı</h3>
@@ -74,7 +75,7 @@ function SonucGecmisi() {
                                 <th>Doğru</th>
                                 <th>Yanlış</th>
                                 <th>Yüzde</th>
-                                <th>Tarih</th>
+                                <th>Boş</th><th>Tarih</th><th>İncele</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -101,9 +102,9 @@ function SonucGecmisi() {
                                                 %{yuzde}
                                             </span>
                                         </td>
-                                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                        <td>{s.bos_sayisi}</td><td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                                             {tarihFormatla(s.tarih)}
-                                        </td>
+                                        </td><td><button className="btn btn-outline btn-sm" onClick={() => yonlendir('/sonuc', { state: { sonuc: s } })}>İncele</button></td>
                                     </tr>
                                 );
                             })}

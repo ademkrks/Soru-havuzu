@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import YonetimPaneli from './pages/yonetimpaneli';
 import SinavSayfasi from './pages/sinavsayfasi';
 import SonucSayfasi from './pages/sonucsayfasi';
@@ -23,6 +23,7 @@ function App() {
         <Router>
             <Gezinme />
             <Routes>
+                <Route path="*" element={<Navigate to="/" replace />} />
                 <Route path="/" element={<YonetimPaneli />} />
                 <Route path="/sinav" element={<SinavSayfasi />} />
                 <Route path="/sonuc" element={<SonucSayfasi />} />

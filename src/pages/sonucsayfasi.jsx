@@ -4,7 +4,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 function SonucSayfasi() {
     const konum = useLocation();
     const yonlendir = useNavigate();
-    const sonuc = konum.state?.sonuc;
+    let kayit;
+    try { kayit = JSON.parse(sessionStorage.getItem('sonuc')); } catch {}
+    const sonuc = konum.state?.sonuc || kayit;
 
     if (!sonuc) {
         return (
