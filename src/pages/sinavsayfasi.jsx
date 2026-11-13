@@ -17,6 +17,7 @@ function SinavSayfasi() {
     const [kayit] = useState(() => kayitliSinav(sessionKey));
 
     // Sınav aşamaları: 'hazirlik' | 'aktif' | 'gonderiliyor'
+    const [aktifSoru, setAktifSoru] = useState(0);
     const [asama, setAsama] = useState(kayit ? 'aktif' : 'hazirlik');
     const [kategoriler, setKategoriler] = useState([]);
     const [seciliKategori, setSeciliKategori] = useState('');
@@ -37,6 +38,8 @@ function SinavSayfasi() {
     useEffect(() => {
         if (!onayModalGoster) return;
         const previous = document.activeElement;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
         const modal = modalRef.current;
         const buttons = modal.querySelectorAll('button');
         buttons[0]?.focus();
@@ -49,7 +52,7 @@ function SinavSayfasi() {
             }
         };
         modal.addEventListener('keydown', klavye);
-        return () => { modal.removeEventListener('keydown', klavye); previous?.focus(); };
+        return () => { document.body.style.overflow = previousOverflow; modal.removeEventListener('keydown', klavye); previous?.focus(); };
     }, [onayModalGoster]);
 
     useEffect(() => {
@@ -189,7 +192,7 @@ function SinavSayfasi() {
         return (
             <div className="container exam-setup">
                 <div className="card exam-setup-card">
-                    <h2>Sınava Başla</h2>
+                    <div className="gece-eyebrow">YENİ BİR DENEME</div><h2>Bir sonraki seviyen burada başlıyor.</h2>
                     <p>Rastgele seçilmiş 20 soruyu cevaplamak için 20 dakikanız olacak.</p>
 
                     {hata && <div className="alert alert-danger">{hata}</div>}
@@ -227,9 +230,9 @@ function SinavSayfasi() {
                         onClick={sinaviBaslat}
                         disabled={yukleniyor}
                     >
-                        {yukleniyor ? <><span className="spinner"></span> Sorular Yükleniyor...</> : '🚀 Sınavı Başlat'}
+                        {yukleniyor ? <><span className="spinner"></span> Sorular Yükleniyor...</> : ' Sınavı Başlat'}
                     </button>
-                </div>
+                </div><div className="gece-setup-footer"><div><h3>Her soruya kendi hızında yaklaş.</h3><p>Sorular arasında geçiş yapabilir, cevaplarını göndermeden önce değiştirebilirsin.</p></div><div><h3>Sonuçların sana ait.</h3><p>Deneme sonunda doğru, yanlış ve boş cevaplarını incele. Geçmişin yalnızca senin hesabında görünür.</p></div></div>
             </div>
         );
     }
@@ -284,24 +287,22 @@ function SinavSayfasi() {
                 </div>
             )}
 
-            <div className="exam-header">
+            <div className="exam-header"><div className="gece-exam-title"><div className="gece-eyebrow">SÜRELİ DENEME</div><h1>Şimdi sadece soruya odaklan.</h1></div>
                 <div className={zamanlayiciSinifi()}>
-                    ⏱️ {zamaniFormatla(kalanSure)}
+                    {zamaniFormatla(kalanSure)}
                 </div>
-                <div className="progress-text">
-                    Cevaplanan: <strong>{cevaplananSayi}</strong> / {sorular.length}
-                </div>
+
             </div>
 
             <div className="container">
                 {hata && <div role="alert" className="alert alert-danger">{hata}</div>}
-                <div className="exam-questions">
-                    {sorular.map((s, idx) => (
+                <div className="gece-progress" role="progressbar" aria-label="Cevaplanan sorular" aria-valuemin={0} aria-valuemax={sorular.length} aria-valuenow={cevaplananSayi}><span style={{ width: `${cevaplananSayi / sorular.length * 100}%` }} /></div><div className="gece-exam-grid"><div className="exam-questions">
+                    {sorular.map((s, idx) => idx === aktifSoru && (
                         <div
                             key={s.id}
                             className={`question-card ${cevaplar[s.id] ? 'answered' : ''}`}
                         >
-                            <div className="question-number">Soru {idx + 1}</div>
+                            <div className="question-number">Soru {idx + 1} / {sorular.length}</div>
                             <div className="question-text">{s.soru_metni}</div>
                             <div className="option-list">
                                 {[
@@ -325,16 +326,16 @@ function SinavSayfasi() {
                                         <span className="option-label">{sec.metin}</span>
                                     </label>
                                 ))}
-                            </div>
+                            </div><div className="gece-question-nav"><button className="btn btn-outline" disabled={aktifSoru === 0} onClick={() => setAktifSoru(i => i - 1)}>← Önceki soru</button><button className="btn btn-primary" disabled={aktifSoru === sorular.length - 1} onClick={() => setAktifSoru(i => i + 1)}>Sonraki soru →</button></div>
                         </div>
                     ))}
-                </div>
+                </div><aside className="gece-question-map"><h2>Soru haritası</h2><div className="gece-map-grid">{sorular.map((s, i) => <button key={s.id} type="button" aria-label={`Soru ${i + 1}${cevaplar[s.id] ? ', cevaplandı' : ', boş'}`} aria-current={aktifSoru === i ? 'step' : undefined} className={cevaplar[s.id] ? 'answered' : ''} onClick={() => setAktifSoru(i)}>{i + 1}</button>)}</div><p className="gece-map-note">{cevaplananSayi} / {sorular.length} cevaplandı<br />{bosSayi} soru boş</p><button className="btn btn-primary" onClick={gonderOnayiGoster} disabled={asama === 'gonderiliyor'}>{asama === 'gonderiliyor' ? 'Gönderiliyor...' : 'Sınavı bitir'}</button></aside></div>
             </div>
 
             <div className="exam-submit-bar">
                 <div className="progress-text">
                     {cevaplananSayi === sorular.length
-                        ? '✅ Tüm sorular cevaplandı!'
+                        ? ' Tüm sorular cevaplandı!'
                         : `${bosSayi} soru boş bırakıldı`}
                 </div>
                 <button
@@ -344,7 +345,7 @@ function SinavSayfasi() {
                 >
                     {asama === 'gonderiliyor'
                         ? <><span className="spinner"></span> Gönderiliyor...</>
-                        : '📩 Sınavı Gönder'}
+                        : ' Sınavı Gönder'}
                 </button>
             </div>
         </div>

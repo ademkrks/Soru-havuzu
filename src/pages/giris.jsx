@@ -19,7 +19,7 @@ export default function Giris() {
         } catch (e) { setHata(e.message === 'Failed to fetch' ? 'Sunucuya ulaşılamadı. Yeniden deneyin.' : e.message); }
         finally { setBusy(false); }
     }
-    return <main className="container exam-setup"><div className="card exam-setup-card">
+    return <main className="gece-login"><div className="gece-login-panel"><section className="gece-login-story"><div><div className="gece-eyebrow">BİLGİNE YENİ BİR ALAN AÇ</div><h2>Bir sonraki seviyen<br />burada başlıyor.</h2><p>Hazırlan, kendini sına ve her denemede ilerlemeni gör.</p></div><div className="gece-orbit" aria-hidden="true"><strong>20:00</strong><span>SENİN ZAMANIN</span></div><div className="gece-login-note"><span className="gece-status-dot" />Sonuçların yalnızca sana ait.</div></section><div className="gece-login-form"><div className="gece-eyebrow">TEKRAR HOŞ GELDİN</div>
         <h1>{kayit ? 'Hesap Oluştur' : 'Giriş Yap'}</h1><p>Sınava girmek ve kendi sonuçlarınızı görmek için giriş yapın.</p>
         {hata && <div role="alert" className="alert alert-danger">{hata}</div>}
         <form onSubmit={submit} style={{ textAlign: 'left' }}>
@@ -27,6 +27,6 @@ export default function Giris() {
             <div className="form-group"><label htmlFor="password">Şifre</label><input id="password" className="form-control" type="password" autoComplete={kayit ? 'new-password' : 'current-password'} minLength={10} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} /><small>En az 10 karakter</small></div>
             <button className="btn btn-primary btn-block" disabled={busy}>{busy ? 'Bekleyin...' : kayit ? 'Hesap Oluştur' : 'Giriş Yap'}</button>
         </form>
-        <button className="btn btn-outline" disabled={busy} style={{ marginTop: '1rem' }} onClick={() => { setKayit(!kayit); setPassword(''); setHata(''); }}>{kayit ? 'Zaten hesabım var' : 'Yeni hesap oluştur'}</button>
-    </div></main>;
+        <button className="btn btn-outline gece-login-toggle" disabled={busy} onClick={() => { setKayit(!kayit); setPassword(''); setHata(''); }}>{kayit ? 'Zaten hesabım var' : 'Yeni hesap oluştur'}</button>
+    </div></div></main>;
 }

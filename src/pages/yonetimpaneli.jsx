@@ -88,7 +88,7 @@ function YonetimPaneli() {
     return (
         <div className="container">
             <div className="page-header">
-                <h1>Yönetim Paneli</h1>
+                <div className="gece-eyebrow">YÖNETİCİ ÇALIŞMA ALANI</div><h1>Soru havuzu</h1>
                 <p>Soru havuzunuzu yönetin — soru ekleyin, inceleyin ve silin</p>
             </div>
 
@@ -98,10 +98,11 @@ function YonetimPaneli() {
                 </div>
             )}
 
+<div className="gece-admin-overview"><div><strong>{sorular.length}</strong><span>Toplam soru</span></div><div><strong>{new Set(sorular.map(s => s.kategori)).size}</strong><span>Kategori</span></div><div><strong>20</strong><span>Sınav başına soru</span></div></div>
             <div className="admin-layout">
                 {/* Soru Ekleme Formu */}
                 <div className="card">
-                    <div className="card-title">{duzenlenen ? 'Soruyu Düzenle' : '➕ Yeni Soru Ekle'}</div>
+                    <div className="card-title">{duzenlenen ? 'Soruyu Düzenle' : ' Yeni Soru Ekle'}</div>
                     <form onSubmit={formuGonder}>
                         {duzenlenen && <button type="button" className="btn btn-outline" onClick={() => { setDuzenlenen(null); setForm(BOS_FORM); }}>Düzenlemeyi İptal Et</button>}
                         <div className="form-group">
@@ -220,14 +221,14 @@ function YonetimPaneli() {
                 {/* Soru Listesi */}
                 <div>
                     <div className="card-title" style={{ marginBottom: '1rem' }}>
-                        📋 Sorular ({sorular.length})
+                         Sorular ({sorular.length})
                     </div>
                     <input aria-label="Soru ara" className="form-control" placeholder="Soru veya kategori ara..." value={arama} onChange={e => setArama(e.target.value)} />
                     <div className="question-list">
                         {sorular.length > 0 && filtreliSorular.length === 0 && <p role="status" className="empty-state">Aramanızla eşleşen soru bulunamadı.</p>}
                         {sorular.length === 0 ? (
                             <div className="empty-state">
-                                <div className="empty-state-icon">📭</div>
+                                <div className="empty-state-icon"></div>
                                 <h3>Henüz soru yok</h3>
                                 <p>Formu kullanarak ilk sorunuzu ekleyin</p>
                             </div>

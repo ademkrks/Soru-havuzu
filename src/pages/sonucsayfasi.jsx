@@ -32,7 +32,7 @@ function SonucSayfasi() {
                     <h2>Sonuç Yok</h2>{hata && <div role="alert" className="alert alert-danger">{hata}</div>}
                     <p>Henüz bir sınava girmediniz.</p>
                     <button className="btn btn-primary btn-lg" onClick={() => yonlendir('/sinav')}>
-                        🚀 Sınava Git
+                        Sınava Git
                     </button>
                 </div>
             </div>
@@ -49,10 +49,10 @@ function SonucSayfasi() {
     };
 
     const notEmojisi = () => {
-        if (yuzde >= 90) return '🏆';
-        if (yuzde >= 70) return '👏';
-        if (yuzde >= 50) return '👍';
-        return '📚';
+        if (yuzde >= 90) return '';
+        if (yuzde >= 70) return '';
+        if (yuzde >= 50) return '';
+        return '';
     };
 
     const notMetni = () => {
@@ -66,8 +66,8 @@ function SonucSayfasi() {
 
     return (
         <div className="container">
-            <div className="result-hero" style={{ animation: 'scaleIn 0.5s ease' }}>
-                <div className={`score-circle ${not}`}>
+            <div className="page-header"><div className="gece-eyebrow">DENEME TAMAMLANDI</div><h1>Bir adım daha ileri.</h1><p>Sonucunu gör, cevaplarını incele ve bir sonraki denemene hazırlan.</p></div><div className="result-hero" style={{ animation: 'scaleIn 0.5s ease' }}>
+                <div className={`score-circle ${not}`} style={{ '--score-progress': `${yuzde}%` }}>
                     <div className="score-value">{puan}</div>
                     <div className="score-label">Puan</div>
                 </div>
@@ -97,7 +97,7 @@ function SonucSayfasi() {
 
                 {/* Basit çubuk grafik */}
                 <div className="card chart-container">
-                    <div className="card-title">📊 Puan Dağılımı</div>
+                    <div className="card-title"> Puan Dağılımı</div>
                     <div className="chart-bar-wrapper">
                         <div className="chart-bar-row">
                             <div className="chart-bar-label">Doğru</div>
@@ -129,7 +129,7 @@ function SonucSayfasi() {
                                         className="chart-bar-fill"
                                         style={{
                                             width: `${(bos_sayisi / toplam_soru) * 100}%`,
-                                            background: 'linear-gradient(135deg, #ffc107 0%, #ff9800 100%)'
+                                            background: 'var(--accent-warning)'
                                         }}
                                     >
                                         {bos_sayisi}
@@ -142,10 +142,10 @@ function SonucSayfasi() {
 
                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                     <button className="btn btn-primary btn-lg" onClick={() => yonlendir('/sinav')}>
-                        🔄 Tekrar Sınava Gir
+                         Tekrar Sınava Gir
                     </button>
                     <button className="btn btn-outline btn-lg" onClick={() => yonlendir('/sonuclar')}>
-                        📜 Geçmişi Gör
+                         Geçmişi Gör
                     </button>
                 </div>
             </div>
@@ -153,7 +153,7 @@ function SonucSayfasi() {
             {/* Detaylı inceleme */}
             {detaylar && detaylar.length > 0 && (
                 <div style={{ marginTop: '2rem' }}>
-                    <h2 style={{ marginBottom: '1rem', fontSize: '1.3rem', fontWeight: 700 }}>📝 Soru İnceleme</h2>
+                    <h2 style={{ marginBottom: '1rem', fontSize: '1.3rem', fontWeight: 700 }}> Soru İnceleme</h2>
                     <div className="review-list">
                         {detaylar.map((d, idx) => (
                             <div

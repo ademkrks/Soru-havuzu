@@ -49,13 +49,13 @@ function SonucGecmisi() {
     return (
         <div className="container">
             <div className="page-header">
-                <h1>Sınav Geçmişi</h1>
+                <div className="gece-eyebrow">KİŞİSEL GELİŞİMİN</div><h1>Sonuçlarım</h1>
                 <p>Geçmiş sınav sonuçlarınızı görüntüleyin</p>
             </div>
 
             {hata ? <div role="alert" className="alert alert-danger">{hata}</div> : sonuclar.length === 0 ? (
                 <div className="empty-state">
-                    <div className="empty-state-icon">📊</div>
+                    <div className="empty-state-icon"></div>
                     <h3>Henüz sınav yapılmadı</h3>
                     <p>Sonuçlarınızı burada görmek için bir sınava girin</p>
                     <button
@@ -63,7 +63,7 @@ function SonucGecmisi() {
                         style={{ marginTop: '1rem' }}
                         onClick={() => yonlendir('/sinav')}
                     >
-                        🚀 Sınava Gir
+                        Sınava Gir
                     </button>
                 </div>
             ) : (
