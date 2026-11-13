@@ -25,7 +25,7 @@ async function bodyOf(req) {
         return body;
     } catch { throw Object.assign(new Error('Geçersiz JSON.'), { status: 400 }); }
 }
-export function createApp(store, { dist = resolve('dist'), now = Date.now } = {}) {
+export function createApp(store, { dist = resolve('dist'), now = Date.now, durationMs = 1200000 } = {}) {
     return createServer(async (req, res) => {
         const send = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); res.end(JSON.stringify(value)); };
         try {
@@ -51,7 +51,7 @@ export function createApp(store, { dist = resolve('dist'), now = Date.now } = {}
                     const pool = store.data.sorular.filter(q => !kategori || q.kategori === kategori);
                     if (pool.length < 20) return send(400, { hata: `Sınav için en az 20 soru gerekli. Bu seçimde ${pool.length} soru var.` });
                     for (let i = pool.length - 1; i > 0; i--) { const j = randomInt(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-                    const exam = { id: randomUUID(), sorular: pool.slice(0, 20), bitis: now() + 1200000 };
+                    const exam = { id: randomUUID(), sorular: pool.slice(0, 20), bitis: now() + durationMs };
                     store.update(d => { d.sinavlar = d.sinavlar.filter(e => e.bitis > now() - 86400000); d.sinavlar.push(exam); });
                     return send(201, { sinav_id: exam.id, bitis: exam.bitis, sorular: exam.sorular.map(({ dogru_cevap, ...q }) => q) });
                 }

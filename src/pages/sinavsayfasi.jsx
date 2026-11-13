@@ -26,11 +26,31 @@ function SinavSayfasi() {
     const zamanlayiciRef = useRef(null);
     const sinavRef = useRef(kayit?.sinav || null);
     const gonderiliyorRef = useRef(false);
+    const tamamlandiRef = useRef(false);
     const otomatikDenendiRef = useRef(false);
     const kayitKuyruguRef = useRef(Promise.resolve());
+    const modalRef = useRef(null);
 
     useEffect(() => {
-        if (asama === 'hazirlik') return;
+        if (!onayModalGoster) return;
+        const previous = document.activeElement;
+        const modal = modalRef.current;
+        const buttons = modal.querySelectorAll('button');
+        buttons[0]?.focus();
+        const klavye = e => {
+            if (e.key === 'Escape') { e.preventDefault(); setOnayModalGoster(false); }
+            if (e.key === 'Tab') {
+                const first = buttons[0], last = buttons[buttons.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+        };
+        modal.addEventListener('keydown', klavye);
+        return () => { modal.removeEventListener('keydown', klavye); previous?.focus(); };
+    }, [onayModalGoster]);
+
+    useEffect(() => {
+        if (asama === 'hazirlik' || tamamlandiRef.current) return;
         try { sessionStorage.setItem('aktif-sinav', JSON.stringify({ sinav: sinavRef.current, sorular, cevaplar })); } catch {}
     }, [asama, sorular, cevaplar]);
 
@@ -93,11 +113,11 @@ function SinavSayfasi() {
                 sinavRef.current = { id: veri.sinav_id, bitis: veri.bitis };
                 setSorular(veri.sorular);
                 setCevaplar({});
-                setKalanSure(20 * 60);
+                setKalanSure(Math.max(0, Math.ceil((veri.bitis - Date.now()) / 1000)));
                 setAsama('aktif');
             }
         } catch {
-            setHata('Ağ hatası. Backend çalışıyor mu?');
+            setHata('Sunucuya ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.');
         } finally {
             setYukleniyor(false);
         }
@@ -139,6 +159,7 @@ function SinavSayfasi() {
             const veri = await yanit.json();
 
             if (yanit.ok) {
+                tamamlandiRef.current = true;
                 try { sessionStorage.removeItem('aktif-sinav'); } catch {}
                 try { sessionStorage.setItem('sonuc', JSON.stringify(veri)); } catch {}
                 yonlendir('/sonuc', { state: { sonuc: veri } });
@@ -147,7 +168,7 @@ function SinavSayfasi() {
                 setAsama('aktif');
             }
         } catch {
-            setHata('Ağ hatası');
+            setHata('Sınav gönderilemedi. Cevaplarınız korundu; bağlantınız geldiğinde tekrar gönderin.');
             setAsama('aktif');
         } finally { gonderiliyorRef.current = false; }
     }, [asama, sorular, cevaplar, yonlendir]);
@@ -183,8 +204,9 @@ function SinavSayfasi() {
 
                     {kategoriler.length > 0 && (
                         <div className="form-group" style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
-                            <label>Kategoriye Göre Filtrele (opsiyonel)</label>
+                            <label htmlFor="sinav-kategori">Kategoriye Göre Filtrele (opsiyonel)</label>
                             <select
+                                id="sinav-kategori"
                                 className="form-control"
                                 value={seciliKategori}
                                 onChange={(e) => setSeciliKategori(e.target.value)}
@@ -215,9 +237,9 @@ function SinavSayfasi() {
             {/* Onay Modalı */}
             {onayModalGoster && (
                 <div className="modal-overlay" onClick={() => setOnayModalGoster(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="sinav-onay-baslik" className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-icon">⚠️</div>
-                        <h2 className="modal-title">Sınavı Bitirmek İstediğinize Emin Misiniz?</h2>
+                        <h2 id="sinav-onay-baslik" className="modal-title">Sınavı Bitirmek İstediğinize Emin Misiniz?</h2>
                         <p className="modal-subtitle">Gönderdikten sonra cevaplarınızı değiştiremezsiniz.</p>
 
                         <div className="modal-stats">

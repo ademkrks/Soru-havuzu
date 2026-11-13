@@ -60,7 +60,7 @@ function YonetimPaneli() {
                 sorulariGetir();
             }
         } catch {
-            setMesaj({ tip: 'danger', metin: 'Ağ hatası. Backend çalışıyor mu?' });
+            setMesaj({ tip: 'danger', metin: 'Sunucuya ulaşılamadı. Bağlantınızı kontrol edip yeniden deneyin.' });
         } finally {
             setYukleniyor(false);
         }
@@ -72,6 +72,7 @@ function YonetimPaneli() {
             const yanit = await fetch(`/api/sorular/${id}`, { method: 'DELETE' });
             if (yanit.ok) {
                 setMesaj({ tip: 'success', metin: '✓ Soru silindi' });
+                if (duzenlenen === id) { setDuzenlenen(null); setForm(BOS_FORM); }
                 sorulariGetir();
             } else {
                 setMesaj({ tip: 'danger', metin: 'Soru silinemedi' });
@@ -80,6 +81,8 @@ function YonetimPaneli() {
             setMesaj({ tip: 'danger', metin: 'Ağ hatası' });
         }
     };
+
+    const filtreliSorular = sorular.filter(s => (s.soru_metni + ' ' + s.kategori).toLocaleLowerCase('tr').includes(arama.toLocaleLowerCase('tr')));
 
     return (
         <div className="container">
@@ -101,11 +104,13 @@ function YonetimPaneli() {
                     <form onSubmit={formuGonder}>
                         {duzenlenen && <button type="button" className="btn btn-outline" onClick={() => { setDuzenlenen(null); setForm(BOS_FORM); }}>Düzenlemeyi İptal Et</button>}
                         <div className="form-group">
-                            <label>Soru Metni</label>
+                            <label htmlFor="soru_metni">Soru Metni</label>
                             <textarea
-                                required
                                 className="form-control"
-                                name="soru_metni"
+                                id="soru_metni"
+                                    required
+                                    maxLength={5000}
+                                    name="soru_metni"
                                 value={form.soru_metni}
                                 onChange={degisiklikleriIsle}
                                 placeholder="Sorunuzu girin..."
@@ -115,9 +120,12 @@ function YonetimPaneli() {
 
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Seçenek A</label>
+                                <label htmlFor="secenek_a">Seçenek A</label>
                                 <input
                                     className="form-control"
+                                    id="secenek_a"
+                                    required
+                                    maxLength={5000}
                                     name="secenek_a"
                                     value={form.secenek_a}
                                     onChange={degisiklikleriIsle}
@@ -125,9 +133,12 @@ function YonetimPaneli() {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Seçenek B</label>
+                                <label htmlFor="secenek_b">Seçenek B</label>
                                 <input
                                     className="form-control"
+                                    id="secenek_b"
+                                    required
+                                    maxLength={5000}
                                     name="secenek_b"
                                     value={form.secenek_b}
                                     onChange={degisiklikleriIsle}
@@ -138,9 +149,12 @@ function YonetimPaneli() {
 
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Seçenek C</label>
+                                <label htmlFor="secenek_c">Seçenek C</label>
                                 <input
                                     className="form-control"
+                                    id="secenek_c"
+                                    required
+                                    maxLength={5000}
                                     name="secenek_c"
                                     value={form.secenek_c}
                                     onChange={degisiklikleriIsle}
@@ -148,9 +162,12 @@ function YonetimPaneli() {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>Seçenek D</label>
+                                <label htmlFor="secenek_d">Seçenek D</label>
                                 <input
                                     className="form-control"
+                                    id="secenek_d"
+                                    required
+                                    maxLength={5000}
                                     name="secenek_d"
                                     value={form.secenek_d}
                                     onChange={degisiklikleriIsle}
@@ -161,9 +178,12 @@ function YonetimPaneli() {
 
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Doğru Cevap</label>
+                                <label htmlFor="dogru_cevap">Doğru Cevap</label>
                                 <select
                                     className="form-control"
+                                    id="dogru_cevap"
+                                    required
+                                    maxLength={5000}
                                     name="dogru_cevap"
                                     value={form.dogru_cevap}
                                     onChange={degisiklikleriIsle}
@@ -176,9 +196,12 @@ function YonetimPaneli() {
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label>Kategori</label>
+                                <label htmlFor="kategori">Kategori</label>
                                 <input
                                     className="form-control"
+                                    id="kategori"
+
+                                    maxLength={5000}
                                     name="kategori"
                                     value={form.kategori}
                                     onChange={degisiklikleriIsle}
@@ -200,6 +223,7 @@ function YonetimPaneli() {
                     </div>
                     <input aria-label="Soru ara" className="form-control" placeholder="Soru veya kategori ara..." value={arama} onChange={e => setArama(e.target.value)} />
                     <div className="question-list">
+                        {sorular.length > 0 && filtreliSorular.length === 0 && <p role="status" className="empty-state">Aramanızla eşleşen soru bulunamadı.</p>}
                         {sorular.length === 0 ? (
                             <div className="empty-state">
                                 <div className="empty-state-icon">📭</div>
@@ -207,7 +231,7 @@ function YonetimPaneli() {
                                 <p>Formu kullanarak ilk sorunuzu ekleyin</p>
                             </div>
                         ) : (
-                            sorular.filter(s => (s.soru_metni + ' ' + s.kategori).toLocaleLowerCase('tr').includes(arama.toLocaleLowerCase('tr'))).map((s) => (
+                            filtreliSorular.map((s) => (
                                 <div key={s.id} className="question-item">
                                     <div className="question-item-content">
                                         <div className="question-item-text">{s.soru_metni}</div>

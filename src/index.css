@@ -909,6 +909,8 @@ textarea.form-control {
 /* Results History */
 .results-history {
   margin-top: 2rem;
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 .results-table {
@@ -1017,8 +1019,17 @@ textarea.form-control {
   }
 
   .navbar {
-    padding: 0 1rem;
+    padding: 0.75rem 1rem;
+    height: auto;
+    min-height: 70px;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
+
+  .navbar-links { flex-wrap: wrap; }
+  .admin-layout > *, .question-item-content { min-width: 0; }
+  .question-item-text, .question-text, .review-question-text { overflow-wrap: anywhere; }
+  .exam-submit-bar { flex-wrap: wrap; gap: 0.75rem; }
 
   .container {
     padding: 1rem;
