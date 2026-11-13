@@ -25,5 +25,21 @@
   },
   "engines": {
     "node": ">=22.12.0"
-  }
+  },
+  "description": "Kullanıcı girişi, yönetici yetkilendirmesi ve kişisel sonuç takibi sunan soru havuzu tabanlı online sınav uygulaması.",
+  "author": "ademkrks",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ademkrks/Soru-havuzu.git"
+  },
+  "keywords": [
+    "react",
+    "nodejs",
+    "vite",
+    "online-exam",
+    "question-bank",
+    "education",
+    "authentication",
+    "role-based-access-control"
+  ]
 }

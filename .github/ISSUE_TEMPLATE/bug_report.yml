@@ -1,0 +1,27 @@
+name: Hata bildirimi
+description: Tekrar üretilebilen bir sorunu bildirin.
+title: "Hata: "
+body:
+  - type: markdown
+    attributes:
+      value: "Güvenlik açıklarını ve kişisel verileri burada paylaşmayın. Önce SECURITY.md belgesini okuyun."
+  - type: textarea
+    id: description
+    attributes:
+      label: Sorun
+      description: Beklenen ve gerçekleşen davranış nedir?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Tekrar üretme adımları
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Ortam
+      description: Tarayıcı, işletim sistemi, Node.js sürümü ve varsa commit kimliği.
+    validations:
+      required: true

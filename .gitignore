@@ -13,3 +13,8 @@ npm-debug.log*
 # Yerel veriler
 data/
 coverage/
+
+# Yerel düzenleyici ve işletim sistemi dosyaları
+.DS_Store
+Thumbs.db
+*.local
